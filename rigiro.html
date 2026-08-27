@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Rigiro — tracker compravendita</title>
+<link rel="manifest" href="data:application/json,{%22name%22:%22Rigiro%22,%22short_name%22:%22Rigiro%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%231B1A17%22,%22theme_color%22:%22%231B1A17%22}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1B1A17;
+    --bg-raised:#242220;
+    --ink:#F2EFE9;
+    --ink-dim:#B8B3A9;
+    --line:#3A3733;
+    --profit:#3FBF8F;
+    --pending:#E2A542;
+    --loss:#D9634A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:90px;
+  }
+  h1,h2,.display{font-family:'Space Grotesk',sans-serif;}
+  header{
+    padding:28px 20px 18px;
+    position:sticky; top:0; z-index:5;
+    background:var(--bg);
+    border-bottom:1px solid var(--line);
+  }
+  header h1{
+    margin:0 0 4px;
+    font-size:28px;
+    font-weight:700;
+    letter-spacing:-0.02em;
+  }
+  header p{margin:0; color:var(--ink-dim); font-size:13px;}
+  .totals{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:1px;
+    background:var(--line);
+    margin:16px 0 0;
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .totals div{
+    background:var(--bg-raised);
+    padding:12px 10px;
+    text-align:center;
+  }
+  .totals .num{font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:600; display:block;}
+  .totals .lbl{font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.04em;}
+  .totals .margine{color:var(--profit);}
+  main{padding:16px;}
+  .filters{display:flex; gap:8px; margin-bottom:14px;}
+  .filters button{
+    flex:1;
+    padding:9px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--bg-raised);
+    color:var(--ink-dim);
+    font-size:13px;
+    font-weight:500;
+  }
+  .filters button.active{
+    background:var(--ink);
+    color:var(--bg);
+    border-color:var(--ink);
+  }
+  .card{
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:10px;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  .card img, .item-row img{
+    width:52px; height:52px; border-radius:10px; object-fit:cover;
+    background:#000; flex-shrink:0;
+  }
+  .card .ph, .item-row .ph{
+    width:52px; height:52px; border-radius:10px; flex-shrink:0;
+    background:var(--line); display:flex; align-items:center; justify-content:center;
+    font-size:18px; color:var(--ink-dim);
+  }
+  .card .info, .item-row .info{flex:1; min-width:0;}
+  .card .name, .item-row .name{font-weight:600; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .card .meta, .item-row .meta{font-size:12px; color:var(--ink-dim); margin-top:2px;}
+  .card .price, .item-row .price{text-align:right; flex-shrink:0;}
+  .card-group{
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:14px;
+    margin-bottom:10px;
+    overflow:hidden;
+  }
+  .card-group-header{
+    padding:12px 14px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-direction:column; gap:2px;
+    background:rgba(255,255,255,.02);
+    cursor:pointer;
+  }
+  .card-group-header .lname{font-weight:700; font-size:14.5px;}
+  .card-group-header .lmeta{font-size:11.5px; color:var(--ink-dim);}
+  .item-row{
+    display:flex; gap:12px; align-items:center;
+    padding:12px 14px;
+    border-bottom:1px solid var(--line);
+  }
+  .item-row:last-child{border-bottom:none;}
+  .card .price .p{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px;}
+  .badge{
+    display:inline-block; font-size:10px; padding:2px 7px; border-radius:20px;
+    margin-top:3px; font-weight:600; text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.pending{background:rgba(226,165,66,.18); color:var(--pending);}
+  .badge.sold{background:rgba(63,191,143,.18); color:var(--profit);}
+  .empty{
+    text-align:center; padding:50px 20px; color:var(--ink-dim);
+  }
+  .empty .em{font-size:32px; display:block; margin-bottom:8px;}
+  .bottom-bar{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    display:flex; gap:10px; z-index:10;
+    width:calc(100% - 32px); max-width:420px;
+  }
+  .fab-inline{
+    flex:2;
+    background:var(--ink); color:var(--bg);
+    border:none; border-radius:30px;
+    padding:14px 16px; font-size:15px; font-weight:600;
+    font-family:'Space Grotesk',sans-serif;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+    white-space:nowrap;
+  }
+  #selectModeBtn{
+    flex:1;
+    background:var(--bg-raised); color:var(--ink);
+    border:1px solid var(--line); border-radius:30px;
+    padding:14px 10px; font-size:14px; font-weight:600;
+    font-family:'Space Grotesk',sans-serif;
+    box-shadow:0 8px 24px rgba(0,0,0,.3);
+  }
+  #selectModeBtn.active{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .sheet-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.55);
+    display:none; z-index:20; align-items:flex-end;
+  }
+  .sheet-backdrop.open{display:flex;}
+  .sheet{
+    background:var(--bg-raised);
+    width:100%; border-radius:20px 20px 0 0;
+    padding:20px 20px calc(20px + env(safe-area-inset-bottom));
+    max-height:85vh; overflow-y:auto;
+  }
+  .sheet h2{margin:0 0 14px; font-size:19px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12px; color:var(--ink-dim); margin-bottom:5px;}
+  .field input{
+    width:100%; padding:11px 12px; border-radius:10px;
+    border:1px solid var(--line); background:var(--bg);
+    color:var(--ink); font-size:15px; font-family:'Inter',sans-serif;
+  }
+  .field input:focus, .field select:focus{outline:2px solid var(--profit); border-color:transparent;}
+  .field select{
+    width:100%; padding:11px 12px; border-radius:10px;
+    border:1px solid var(--line); background:var(--bg);
+    color:var(--ink); font-size:15px; font-family:'Inter',sans-serif;
+    appearance:none; -webkit-appearance:none;
+  }
+  .field input[type=file]{
+    padding:9px 6px; font-size:13px; color:var(--ink-dim);
+  }
+  .cat-tag{
+    font-size:11px; color:var(--ink-dim); background:var(--bg);
+    border:1px solid var(--line); border-radius:6px; padding:1px 6px;
+    margin-left:6px;
+  }
+  .field.opt{opacity:.85;}
+  .req{color:var(--loss);}
+  .sheet-actions{display:flex; gap:10px; margin-top:16px;}
+  .sheet-actions button{
+    flex:1; padding:13px; border-radius:12px; border:none;
+    font-size:15px; font-weight:600; font-family:'Space Grotesk',sans-serif;
+  }
+  .btn-primary{background:var(--profit); color:#0E1A15;}
+  .btn-ghost{background:transparent; color:var(--ink-dim); border:1px solid var(--line) !important;}
+  .btn-danger{background:transparent; color:var(--loss); border:1px solid var(--line) !important;}
+  .toast{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:30px;
+    font-size:13px; font-weight:600; z-index:50; opacity:0; transition:opacity .25s;
+    pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+  .gear{
+    position:fixed; top:24px; right:18px; background:none; border:none;
+    color:var(--ink-dim); font-size:20px; z-index:6;
+  }
+  .bk-box{
+    background:var(--bg); border:1px dashed var(--line); border-radius:10px;
+    padding:10px; font-size:11px; color:var(--ink-dim); word-break:break-all;
+    max-height:110px; overflow-y:auto; margin-top:8px;
+  }
+  a.bk-link{color:var(--profit); text-decoration:none; font-weight:600;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Rigiro</h1>
+  <p>Il tuo giro di compravendita, senza pensieri</p>
+  <div class="totals">
+    <div><span class="num" id="totInvestito">€0</span><span class="lbl">Investito</span></div>
+    <div><span class="num" id="totRicavato">€0</span><span class="lbl">Ricavato</span></div>
+    <div><span class="num margine" id="totMargine">€0</span><span class="lbl">Margine</span></div>
+  </div>
+</header>
+
+<button class="gear" onclick="openSettings()" aria-label="Impostazioni e bookmarklet">⚙︎</button>
+
+<main>
+  <input type="search" id="searchBox" placeholder="Cerca per nome o categoria..." oninput="render()"
+    style="width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg-raised);color:var(--ink);font-size:14px;font-family:'Inter',sans-serif;margin-bottom:12px;">
+  <div class="filters">
+    <button class="active" data-f="all" onclick="setFilter('all')">Tutto</button>
+    <button data-f="inventario" onclick="setFilter('inventario')">In inventario</button>
+    <button data-f="venduto" onclick="setFilter('venduto')">Venduto</button>
+  </div>
+  <select id="sortSelect" onchange="render()"
+    style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-raised);color:var(--ink);font-size:13.5px;font-family:'Inter',sans-serif;margin-bottom:12px;">
+    <option value="data_desc">Più recenti</option>
+    <option value="data_asc">Più vecchi</option>
+    <option value="prezzo_desc">Prezzo pagato: alto → basso</option>
+    <option value="prezzo_asc">Prezzo pagato: basso → alto</option>
+    <option value="margine_desc">Margine: alto → basso</option>
+    <option value="margine_asc">Margine: basso → alto</option>
+    <option value="nome_asc">Nome: A → Z</option>
+    <option value="nome_desc">Nome: Z → A</option>
+  </select>
+  <div id="list"></div>
+</main>
+
+<div class="bottom-bar">
+  <button id="selectModeBtn" onclick="toggleSelectMode()">Seleziona</button>
+  <button class="fab-inline" id="mainFab" onclick="openAdd()">+ Aggiungi acquisto</button>
+  <button class="fab-inline" id="groupFab" style="display:none;background:var(--profit);" onclick="promptGroupLotto()">📦 Raggruppa (<span id="selCount">0</span>)</button>
+</div>
+
+<!-- Add / Edit sheet -->
+<div class="sheet-backdrop" id="addBackdrop">
+  <div class="sheet">
+    <h2 id="addTitle">Nuovo acquisto</h2>
+    <input type="hidden" id="editId">
+    <div class="field" id="fNomeField">
+      <label>Cosa hai comprato <span class="req">*</span></label>
+      <input id="fNome" placeholder="es. Felpa Carhartt taglia M">
+    </div>
+    <button type="button" id="lottoToggleBtn" onclick="toggleLotto()"
+      style="background:none;border:1px solid var(--line);color:var(--ink-dim);border-radius:10px;padding:8px 12px;font-size:13px;margin:-4px 0 12px;width:100%;text-align:left;">
+      🎮 È un lotto con più giochi diversi?
+    </button>
+    <div id="lottoFields" style="display:none;">
+      <div class="filters" style="margin-bottom:12px;">
+        <button type="button" class="active" data-sub="diviso" onclick="setLottoSubMode('diviso')">Dividi in automatico</button>
+        <button type="button" data-sub="manuale" onclick="setLottoSubMode('manuale')">Prezzo singolo</button>
+      </div>
+      <div class="field">
+        <label id="fLottoNomiLabel">Giochi nel lotto (uno per riga)</label>
+        <textarea id="fLottoNomi" rows="4" placeholder="Mario Kart 8&#10;Zelda BOTW&#10;Splatoon 2"
+          style="width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:15px;font-family:'Inter',sans-serif;resize:vertical;"></textarea>
+        <p id="fLottoNomiHint" style="font-size:11px;color:var(--ink-dim);margin:5px 0 0;display:none;">Formato: nome, prezzo — un gioco per riga, usa il punto per i decimali (es. "Mario Kart 8, 25.00").</p>
+      </div>
+      <div class="field" id="fLottoPrezzoTotaleField">
+        <label>Prezzo totale pagato per il lotto (€)</label>
+        <input id="fLottoPrezzoTotale" type="number" step="0.01" inputmode="decimal" placeholder="0.00">
+        <p style="font-size:11px;color:var(--ink-dim);margin:5px 0 0;">Verrà diviso in parti uguali tra i giochi elencati sopra — potrai correggere ogni prezzo dopo con ✎.</p>
+      </div>
+    </div>
+    <div class="field">
+      <label>Categoria</label>
+      <select id="fCategoria">
+        <option value="Switch">Nintendo Switch</option>
+        <option value="PS5">PS5</option>
+        <option value="PS4">PS4</option>
+        <option value="Xbox Series X|S">Xbox Series X|S</option>
+        <option value="Xbox One">Xbox One</option>
+        <option value="PS3">PS3</option>
+        <option value="3DS">3DS</option>
+        <option value="DS">DS</option>
+        <option value="Wii U">Wii U</option>
+        <option value="Wii">Wii</option>
+        <option value="GameCube">GameCube</option>
+        <option value="PS2">PS2</option>
+        <option value="Xbox 360">Xbox 360</option>
+        <option value="PS1">PS1</option>
+        <option value="Altro">Altro</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Lingua</label>
+      <select id="fLingua">
+        <option value="IT">IT</option>
+        <option value="EN">EN</option>
+        <option value="FR">FR</option>
+        <option value="DE">DE</option>
+        <option value="ES">ES</option>
+        <option value="Multi">Multi-lingua</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Quantità</label>
+      <input id="fQuantita" type="number" min="1" step="1" value="1">
+    </div>
+    <div class="field" id="fPrezzoField">
+      <label>Prezzo pagato (€) <span class="req">*</span></label>
+      <input id="fPrezzo" type="number" step="0.01" inputmode="decimal" placeholder="0.00">
+    </div>
+    <div class="field">
+      <label>Data acquisto</label>
+      <input id="fData" type="date">
+    </div>
+    <div class="field opt">
+      <label>Foto (opzionale)</label>
+      <input id="fFotoFile" type="file" accept="image/*">
+      <input type="hidden" id="fFoto">
+      <img id="fFotoPreview" style="display:none;width:70px;height:70px;object-fit:cover;border-radius:10px;margin-top:8px;">
+    </div>
+    <div class="field opt">
+      <label>Note (opzionale)</label>
+      <input id="fNote" placeholder="taglia, difetti, spedizione...">
+    </div>
+    <div id="sellEditSection" style="display:none;border-top:1px solid var(--line);margin-top:14px;padding-top:14px;">
+      <p style="font-size:12px;color:var(--ink-dim);margin:0 0 10px;">Dati di vendita</p>
+      <div class="field">
+        <label>Prezzo di vendita (€)</label>
+        <input id="fPrezzoVendita" type="number" step="0.01" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Data vendita</label>
+        <input id="fDataVendita" type="date">
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-ghost" onclick="closeAdd()">Annulla</button>
+      <button class="btn-primary" onclick="saveItem()">Salva</button>
+    </div>
+    <button class="btn-danger" id="deleteItemBtn" style="display:none;width:100%;padding:13px;border-radius:12px;font-size:15px;font-weight:600;font-family:'Space Grotesk',sans-serif;margin-top:10px;" onclick="deleteItem()">Elimina articolo</button>
+  </div>
+</div>
+
+<!-- Sell sheet -->
+<div class="sheet-backdrop" id="sellBackdrop">
+  <div class="sheet">
+    <h2>Segna come venduto</h2>
+    <input type="hidden" id="sellId">
+    <div class="field">
+      <label>Prezzo di vendita (€) <span class="req">*</span></label>
+      <input id="sPrezzo" type="number" step="0.01" inputmode="decimal" placeholder="0.00">
+    </div>
+    <div class="field">
+      <label>Data vendita</label>
+      <input id="sData" type="date">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-ghost" onclick="closeSell()">Annulla</button>
+      <button class="btn-primary" onclick="confirmSell()">Conferma vendita</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings / bookmarklet sheet -->
+<div class="sheet-backdrop" id="setBackdrop">
+  <div class="sheet">
+    <h2>Cattura veloce da Vinted</h2>
+    <p style="font-size:13px;color:var(--ink-dim);margin-top:-6px;">
+      Il bookmarklet legge titolo, prezzo e foto dalla pagina dell'annuncio che stai guardando e ti riporta qui con il modulo già compilato. Funziona solo dopo che avrai pubblicato questa pagina online (es. GitHub Pages) — inserisci qui sotto l'indirizzo dove l'avrai messa.
+    </p>
+    <div class="field">
+      <label>URL dove pubblicherai Rigiro</label>
+      <input id="deployUrl" placeholder="https://tuonome.github.io/rigiro/">
+    </div>
+    <button class="btn-primary" style="width:100%;padding:12px;border-radius:12px;font-family:'Space Grotesk',sans-serif;font-weight:600;" onclick="genBookmarklet()">Genera bookmarklet</button>
+    <div class="bk-box" id="bkResult" style="display:none;"></div>
+    <p style="font-size:12px;color:var(--ink-dim);margin-top:14px;">
+      <strong>Su iPhone:</strong> crea un segnalibro qualsiasi (es. sulla home Vinted), poi da Safari/Opera vai a modificarlo e incolla il codice al posto dell'indirizzo. Da un annuncio Vinted, apri quel segnalibro per catturare i dati.
+    </p>
+
+    <h2 style="margin-top:24px;font-size:17px;border-top:1px solid var(--line);padding-top:20px;">Importa più acquisti insieme</h2>
+    <p style="font-size:13px;color:var(--ink-dim);margin-top:-6px;">
+      Questo bookmarklet non serve pubblicarlo online: vai sulla pagina "I miei acquisti" di Vinted, aprilo, e copia negli appunti tutti gli articoli visibili sulla pagina. Poi torna qui e tocca "Incolla acquisti". È una lettura automatica ma euristica: la pagina di Vinted può cambiare struttura, quindi controlla sempre i dati prima di salvare.
+    </p>
+    <button class="btn-primary" style="width:100%;padding:12px;border-radius:12px;font-family:'Space Grotesk',sans-serif;font-weight:600;" onclick="genBulkBookmarklet()">Genera bookmarklet importazione</button>
+    <div class="bk-box" id="bkBulkResult" style="display:none;"></div>
+    <button class="btn-ghost" style="width:100%;padding:12px;border-radius:12px;font-family:'Space Grotesk',sans-serif;font-weight:600;margin-top:10px;" onclick="pasteOrders()">📋 Incolla acquisti copiati</button>
+    <p style="font-size:12px;color:var(--ink-dim);margin-top:14px;">Se gli appunti non funzionano, incolla qui sotto a mano il testo (uno per riga, formato "nome, prezzo"):</p>
+    <textarea id="manualPasteBox" rows="4" placeholder="3DS, 73.30&#10;Lot jeu ps4, 20.70"
+      style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:13px;font-family:'Inter',sans-serif;resize:vertical;"></textarea>
+    <button class="btn-ghost" style="width:100%;padding:10px;border-radius:12px;font-family:'Space Grotesk',sans-serif;font-weight:600;margin-top:8px;" onclick="pasteManualLines()">Aggiungi dal testo qui sopra</button>
+    <div class="sheet-actions">
+      <button class="btn-ghost" style="flex:1;" onclick="closeSettings()">Chiudi</button>
+      <button class="btn-danger" style="flex:1;" onclick="wipeData()">Cancella tutti i dati</button>
+    </div>
+
+    <h2 style="margin-top:24px;font-size:17px;border-top:1px solid var(--line);padding-top:20px;">Backup dati</h2>
+    <p style="font-size:13px;color:var(--ink-dim);margin-top:-6px;">
+      Esporta un file con tutti i tuoi acquisti (utile per passare a un altro telefono o per sicurezza). L'importazione aggiunge quei dati a quelli già presenti, non li cancella.
+    </p>
+    <div class="sheet-actions" style="margin-top:0;">
+      <button class="btn-ghost" style="flex:1;" onclick="exportData()">⬇ Esporta</button>
+      <button class="btn-ghost" style="flex:1;" onclick="document.getElementById('importFile').click()">⬆ Importa</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json" style="display:none;" onchange="importData(event)">
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'rigiro_items_v1';
+let currentFilter = 'all';
+let selectMode = false;
+let selectedIds = new Set();
+let expandedLots = new Set();
+
+function toggleSelectMode(){
+  selectMode = !selectMode;
+  selectedIds.clear();
+  document.getElementById('selectModeBtn').classList.toggle('active', selectMode);
+  document.getElementById('selectModeBtn').textContent = selectMode ? 'Annulla' : 'Seleziona';
+  document.getElementById('mainFab').style.display = selectMode ? 'none' : 'flex';
+  document.getElementById('groupFab').style.display = 'none';
+  render();
+}
+function toggleSelect(id){
+  if(selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  document.getElementById('selCount').textContent = selectedIds.size;
+  document.getElementById('groupFab').style.display = selectedIds.size >= 2 ? 'flex' : 'none';
+  render();
+}
+function promptGroupLotto(){
+  const nome = prompt('Nome per questo lotto (es. "Lotto Vinted 12/09"):');
+  if(!nome || !nome.trim()) return;
+  const items = load();
+  const count = selectedIds.size;
+  items.forEach(i=>{
+    if(selectedIds.has(i.id)) i.lottoNome = nome.trim();
+  });
+  save(items);
+  toggleSelectMode();
+  showToast(`${count} articoli raggruppati`);
+}
+
+const CAT_COLORS = {
+  'Switch': '#E4000F',
+  'PS5': '#0070D1',
+  'PS4': '#0070D1',
+  'Xbox Series X|S': '#107C10',
+  'Xbox One': '#107C10',
+  'PS3': '#0070D1',
+  '3DS': '#F2A900',
+  'DS': '#5C7AEA',
+  'Wii U': '#00BCEB',
+  'Wii': '#4FC3F7',
+  'GameCube': '#8A5CF6',
+  'PS2': '#0070D1',
+  'Xbox 360': '#107C10',
+  'PS1': '#9A9A9A',
+  'Altro': '#B8B3A9',
+};
+
+function load(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }catch(e){ return []; } }
+function save(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); render(); }
+function uid(){ return 'i' + Date.now() + Math.random().toString(36).slice(2,7); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function euro(n){ return '€' + (Math.round(n*100)/100).toFixed(2).replace('.00','').replace(/\.(\d)0$/,'.$1'); }
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function render(){
+  const items = load();
+  const list = document.getElementById('list');
+  const q = (document.getElementById('searchBox')?.value || '').trim().toLowerCase();
+  let filtered = items;
+  if(currentFilter==='inventario') filtered = items.filter(i=>!i.venduto);
+  if(currentFilter==='venduto') filtered = items.filter(i=>i.venduto);
+  if(q) filtered = filtered.filter(i =>
+    (i.nome||'').toLowerCase().includes(q) ||
+    (i.categoria||'').toLowerCase().includes(q) ||
+    (i.lingua||'').toLowerCase().includes(q) ||
+    (i.lottoNome||'').toLowerCase().includes(q)
+  );
+  const sortBy = document.getElementById('sortSelect')?.value || 'data_desc';
+  const marginOf = i => i.venduto ? (i.prezzoVendita - i.prezzoAcquisto) : -Infinity;
+  const sorters = {
+    data_desc: (a,b)=> (b.dataAcquisto||'').localeCompare(a.dataAcquisto||''),
+    data_asc: (a,b)=> (a.dataAcquisto||'').localeCompare(b.dataAcquisto||''),
+    prezzo_desc: (a,b)=> b.prezzoAcquisto - a.prezzoAcquisto,
+    prezzo_asc: (a,b)=> a.prezzoAcquisto - b.prezzoAcquisto,
+    margine_desc: (a,b)=> marginOf(b) - marginOf(a),
+    margine_asc: (a,b)=> marginOf(a) - marginOf(b),
+    nome_asc: (a,b)=> (a.nome||'').localeCompare(b.nome||''),
+    nome_desc: (a,b)=> (b.nome||'').localeCompare(a.nome||''),
+  };
+  filtered = [...filtered].sort(sorters[sortBy] || sorters.data_desc);
+
+  if(filtered.length===0){
+    list.innerHTML = `<div class="empty"><span class="em">🧺</span>Ancora niente qui.<br>Aggiungi il tuo primo acquisto.</div>`;
+  } else {
+    const rendered = new Set();
+    let html = '';
+    filtered.forEach(i=>{
+      if(rendered.has(i.id)) return;
+      if(i.lottoNome){
+        const groupItems = filtered.filter(x => x.lottoNome === i.lottoNome);
+        groupItems.forEach(g=>rendered.add(g.id));
+        html += renderGroupCard(i.lottoNome, groupItems);
+      } else {
+        rendered.add(i.id);
+        html += renderItemRow(i, false);
+      }
+    });
+    list.innerHTML = html;
+  }
+
+  const investito = items.reduce((s,i)=>s+i.prezzoAcquisto,0);
+  const ricavato = items.filter(i=>i.venduto).reduce((s,i)=>s+i.prezzoVendita,0);
+  const margine = ricavato - items.filter(i=>i.venduto).reduce((s,i)=>s+i.prezzoAcquisto,0);
+  document.getElementById('totInvestito').textContent = euro(investito);
+  document.getElementById('totRicavato').textContent = euro(ricavato);
+  document.getElementById('totMargine').textContent = euro(margine);
+}
+
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+function renderItemRow(i, insideGroup){
+  const img = i.foto ? `<img src="${i.foto}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'📦'}))">` : `<div class="ph">📦</div>`;
+  const badge = i.venduto ? `<span class="badge sold">Venduto</span>` : `<span class="badge pending">In inventario</span>`;
+  const priceLine = i.venduto
+    ? `<span class="p" style="color:var(--profit)">${euro(i.prezzoVendita - i.prezzoAcquisto)}</span>`
+    : `<span class="p">${euro(i.prezzoAcquisto)}</span>`;
+  const checkbox = selectMode
+    ? `<input type="checkbox" onclick="event.stopPropagation(); toggleSelect('${i.id}')" ${selectedIds.has(i.id)?'checked':''}
+         style="width:20px;height:20px;flex-shrink:0;">`
+    : '';
+  const tapAction = selectMode ? `toggleSelect('${i.id}')` : `cardTap('${i.id}', ${i.venduto})`;
+  const wrapClass = insideGroup ? 'item-row' : 'card';
+  return `<div class="${wrapClass}">
+    ${checkbox}
+    <div style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;" onclick="${tapAction}">
+      ${img}
+      <div class="info">
+        <div class="name">${escapeHtml(i.nome)}</div>
+        <div class="meta">${i.venduto ? 'Pagato '+euro(i.prezzoAcquisto)+' → '+euro(i.prezzoVendita) : (i.dataAcquisto||'')}</div>
+        ${badge}${i.categoria ? `<span class="cat-tag" style="color:${CAT_COLORS[i.categoria] || 'var(--ink-dim)'};border-color:${CAT_COLORS[i.categoria] || 'var(--line)'}66;">${escapeHtml(i.categoria)}</span>` : ''}${i.lingua ? `<span class="cat-tag">${escapeHtml(i.lingua)}</span>` : ''}${(i.quantita && i.quantita > 1) ? `<span class="cat-tag">×${i.quantita}</span>` : ''}
+      </div>
+      <div class="price">${priceLine}</div>
+    </div>
+    ${selectMode ? '' : `<button onclick="event.stopPropagation(); editItem('${i.id}')" aria-label="Modifica"
+      style="background:none;border:none;color:var(--ink-dim);font-size:17px;padding:6px;flex-shrink:0;">✎</button>`}
+  </div>`;
+}
+
+function renderGroupCard(lottoNome, groupItems){
+  const totale = groupItems.reduce((s,i)=>s+i.prezzoAcquisto,0);
+  const venduti = groupItems.filter(i=>i.venduto).length;
+  const expanded = expandedLots.has(lottoNome);
+  const rows = expanded ? groupItems.map(i=>renderItemRow(i, true)).join('') : '';
+  const safeName = escapeHtml(lottoNome).replace(/'/g,"\\'");
+  return `<div class="card-group">
+    <div class="card-group-header" style="${expanded ? '' : 'border-bottom:none;'}" onclick="toggleLotGroup('${safeName}')">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div class="lname" style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📦 ${escapeHtml(lottoNome)}</div>
+        <button onclick="event.stopPropagation(); renameLotto('${safeName}')" aria-label="Rinomina lotto"
+          style="background:none;border:none;color:var(--ink-dim);font-size:15px;padding:2px 4px;flex-shrink:0;">✎</button>
+        <span style="color:var(--ink-dim); font-size:13px; flex-shrink:0;">${expanded ? '▾' : '▸'}</span>
+      </div>
+      <div class="lmeta">${groupItems.length} articoli · ${euro(totale)} pagato${venduti>0 ? ` · ${venduti} venduti` : ''}</div>
+    </div>
+    ${rows}
+  </div>`;
+}
+
+function renameLotto(oldName){
+  const newName = prompt('Nuovo nome per il lotto:', oldName);
+  if(!newName || !newName.trim() || newName.trim() === oldName) return;
+  const trimmed = newName.trim();
+  const items = load();
+  items.forEach(i=>{ if(i.lottoNome === oldName) i.lottoNome = trimmed; });
+  save(items);
+  if(expandedLots.has(oldName)){ expandedLots.delete(oldName); expandedLots.add(trimmed); }
+  showToast('Lotto rinominato');
+}
+
+function toggleLotGroup(lottoNome){
+  if(expandedLots.has(lottoNome)) expandedLots.delete(lottoNome);
+  else expandedLots.add(lottoNome);
+  render();
+}
+
+// Compress a picked photo down to a small JPEG data URL so localStorage doesn't fill up
+function handlePhotoPick(fileInputId, hiddenId, previewId){
+  const file = document.getElementById(fileInputId).files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      const maxW = 400;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+      document.getElementById(hiddenId).value = dataUrl;
+      const prev = document.getElementById(previewId);
+      prev.src = dataUrl;
+      prev.style.display = 'block';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+document.getElementById('fFotoFile').addEventListener('change', ()=>handlePhotoPick('fFotoFile','fFoto','fFotoPreview'));
+
+function setFilter(f){
+  currentFilter = f;
+  document.querySelectorAll('.filters button').forEach(b=>b.classList.toggle('active', b.dataset.f===f));
+  render();
+}
+
+function cardTap(id, venduto){
+  if(venduto === 'true' || venduto === true){
+    editItem(id);
+  } else {
+    openSell(id);
+  }
+}
+
+function resetFotoField(){
+  document.getElementById('fFotoFile').value = '';
+  document.getElementById('fFoto').value = '';
+  document.getElementById('fFotoPreview').style.display = 'none';
+}
+let lottoMode = false;
+let lottoSubMode = 'diviso';
+function setLottoSubMode(mode){
+  lottoSubMode = mode;
+  document.querySelectorAll('#lottoFields .filters button').forEach(b=>b.classList.toggle('active', b.dataset.sub===mode));
+  const manuale = mode === 'manuale';
+  document.getElementById('fLottoNomiLabel').textContent = manuale ? 'Giochi nel lotto, uno per riga' : 'Giochi nel lotto (uno per riga)';
+  document.getElementById('fLottoNomiHint').style.display = manuale ? 'block' : 'none';
+  document.getElementById('fLottoPrezzoTotaleField').style.display = manuale ? 'none' : 'block';
+}
+function toggleLotto(){
+  lottoMode = !lottoMode;
+  document.getElementById('lottoFields').style.display = lottoMode ? 'block' : 'none';
+  document.getElementById('fNomeField').style.display = lottoMode ? 'none' : 'block';
+  document.getElementById('fPrezzoField').style.display = lottoMode ? 'none' : 'block';
+  document.getElementById('lottoToggleBtn').textContent = lottoMode ? '↩ Torna a un solo articolo' : '🎮 È un lotto con più giochi diversi?';
+}
+function openAdd(prefill){
+  document.getElementById('addTitle').textContent = 'Nuovo acquisto';
+  document.getElementById('editId').value = '';
+  document.getElementById('fNome').value = prefill?.nome || '';
+  document.getElementById('fCategoria').value = 'Switch';
+  document.getElementById('fLingua').value = 'IT';
+  document.getElementById('fQuantita').value = 1;
+  document.getElementById('fPrezzo').value = prefill?.prezzo || '';
+  document.getElementById('fData').value = todayStr();
+  document.getElementById('sellEditSection').style.display = 'none';
+  lottoMode = false;
+  setLottoSubMode('diviso');
+  document.getElementById('lottoFields').style.display = 'none';
+  document.getElementById('fNomeField').style.display = 'block';
+  document.getElementById('fPrezzoField').style.display = 'block';
+  document.getElementById('lottoToggleBtn').textContent = '🎮 È un lotto con più giochi diversi?';
+  document.getElementById('lottoToggleBtn').style.display = 'block';
+  document.getElementById('fLottoNomi').value = '';
+  document.getElementById('fLottoPrezzoTotale').value = '';
+  resetFotoField();
+  if(prefill?.foto){
+    document.getElementById('fFoto').value = prefill.foto;
+    const prev = document.getElementById('fFotoPreview');
+    prev.src = prefill.foto; prev.style.display = 'block';
+  }
+  document.getElementById('fNote').value = prefill?.note || '';
+  document.getElementById('deleteItemBtn').style.display = 'none';
+  document.getElementById('addBackdrop').classList.add('open');
+}
+function editItem(id){
+  const items = load();
+  const it = items.find(i=>i.id===id);
+  if(!it) return;
+  document.getElementById('addTitle').textContent = 'Modifica acquisto';
+  document.getElementById('editId').value = id;
+  document.getElementById('fNome').value = it.nome;
+  document.getElementById('fCategoria').value = it.categoria || 'Switch';
+  document.getElementById('fLingua').value = it.lingua || 'IT';
+  document.getElementById('fQuantita').value = it.quantita || 1;
+  document.getElementById('fPrezzo').value = it.prezzoAcquisto;
+  document.getElementById('fData').value = it.dataAcquisto;
+  lottoMode = false;
+  document.getElementById('lottoFields').style.display = 'none';
+  document.getElementById('fNomeField').style.display = 'block';
+  document.getElementById('fPrezzoField').style.display = 'block';
+  document.getElementById('lottoToggleBtn').style.display = 'none';
+  resetFotoField();
+  if(it.foto){
+    document.getElementById('fFoto').value = it.foto;
+    const prev = document.getElementById('fFotoPreview');
+    prev.src = it.foto; prev.style.display = 'block';
+  }
+  document.getElementById('fNote').value = it.note || '';
+  const sellSection = document.getElementById('sellEditSection');
+  if(it.venduto){
+    sellSection.style.display = 'block';
+    document.getElementById('fPrezzoVendita').value = it.prezzoVendita ?? '';
+    document.getElementById('fDataVendita').value = it.dataVendita || todayStr();
+  } else {
+    sellSection.style.display = 'none';
+  }
+  document.getElementById('deleteItemBtn').style.display = 'block';
+  document.getElementById('addBackdrop').classList.add('open');
+}
+function deleteItem(){
+  const id = document.getElementById('editId').value;
+  if(!id) return;
+  if(!confirm('Eliminare questo articolo? Non si può annullare.')) return;
+  const items = load().filter(i=>i.id !== id);
+  save(items);
+  closeAdd();
+  showToast('Articolo eliminato');
+}
+function closeAdd(){ document.getElementById('addBackdrop').classList.remove('open'); }
+
+function saveItem(){
+  const editId = document.getElementById('editId').value;
+
+  if(lottoMode && !editId){
+    const items = load();
+    const shared = {
+      categoria: document.getElementById('fCategoria').value,
+      lingua: document.getElementById('fLingua').value,
+      dataAcquisto: document.getElementById('fData').value || todayStr(),
+      foto: document.getElementById('fFoto').value.trim(),
+      note: document.getElementById('fNote').value.trim(),
+    };
+
+    if(lottoSubMode === 'manuale'){
+      const righe = document.getElementById('fLottoNomi').value.split('\n').map(l=>l.trim()).filter(Boolean);
+      const parsed = righe.map(riga=>{
+        const idx = riga.lastIndexOf(',');
+        if(idx === -1) return null;
+        const nome = riga.slice(0, idx).trim();
+        const prezzo = parseFloat(riga.slice(idx+1).trim());
+        if(!nome || isNaN(prezzo)) return null;
+        return { nome, prezzo };
+      }).filter(Boolean);
+      if(parsed.length === 0){ showToast('Formato non valido: nome, prezzo su ogni riga'); return; }
+      parsed.forEach(p=>{
+        items.push({ id: uid(), nome: p.nome, quantita: 1, prezzoAcquisto: p.prezzo, venduto:false, prezzoVendita:null, dataVendita:null, ...shared });
+      });
+      save(items);
+      closeAdd();
+      showToast(`Aggiunti ${parsed.length} giochi dal lotto`);
+      return;
+    }
+
+    const nomi = document.getElementById('fLottoNomi').value.split('\n').map(l=>l.trim()).filter(Boolean);
+    const totale = parseFloat(document.getElementById('fLottoPrezzoTotale').value);
+    if(nomi.length === 0 || isNaN(totale)){ showToast('Servono i giochi e il prezzo totale'); return; }
+    const perPrice = Math.round((totale / nomi.length) * 100) / 100;
+    // give the last item any rounding remainder so the sum matches the total paid
+    const assigned = perPrice * (nomi.length - 1);
+    nomi.forEach((nome, idx)=>{
+      const prezzoAcquisto = idx === nomi.length - 1 ? Math.round((totale - assigned) * 100) / 100 : perPrice;
+      items.push({ id: uid(), nome, quantita: 1, prezzoAcquisto, venduto:false, prezzoVendita:null, dataVendita:null, ...shared });
+    });
+    save(items);
+    closeAdd();
+    showToast(`Aggiunti ${nomi.length} giochi dal lotto`);
+    return;
+  }
+
+  const nome = document.getElementById('fNome').value.trim();
+  const prezzo = parseFloat(document.getElementById('fPrezzo').value);
+  if(!nome || isNaN(prezzo)){ showToast('Servono almeno nome e prezzo'); return; }
+  const items = load();
+  const data = {
+    nome,
+    categoria: document.getElementById('fCategoria').value,
+    lingua: document.getElementById('fLingua').value,
+    quantita: Math.max(1, parseInt(document.getElementById('fQuantita').value) || 1),
+    prezzoAcquisto: prezzo,
+    dataAcquisto: document.getElementById('fData').value || todayStr(),
+    foto: document.getElementById('fFoto').value.trim(),
+    note: document.getElementById('fNote').value.trim(),
+  };
+  if(editId){
+    const idx = items.findIndex(i=>i.id===editId);
+    items[idx] = {...items[idx], ...data};
+    if(items[idx].venduto){
+      const pv = parseFloat(document.getElementById('fPrezzoVendita').value);
+      if(!isNaN(pv)) items[idx].prezzoVendita = pv;
+      items[idx].dataVendita = document.getElementById('fDataVendita').value || items[idx].dataVendita;
+    }
+  } else {
+    items.push({ id: uid(), venduto:false, prezzoVendita:null, dataVendita:null, ...data });
+  }
+  save(items);
+  closeAdd();
+  showToast('Salvato');
+}
+
+function openSell(id){
+  document.getElementById('sellId').value = id;
+  document.getElementById('sPrezzo').value = '';
+  document.getElementById('sData').value = todayStr();
+  document.getElementById('sellBackdrop').classList.add('open');
+}
+function closeSell(){ document.getElementById('sellBackdrop').classList.remove('open'); }
+function confirmSell(){
+  const id = document.getElementById('sellId').value;
+  const prezzo = parseFloat(document.getElementById('sPrezzo').value);
+  if(isNaN(prezzo)){ showToast('Inserisci il prezzo di vendita'); return; }
+  const items = load();
+  const idx = items.findIndex(i=>i.id===id);
+  items[idx].venduto = true;
+  items[idx].prezzoVendita = prezzo;
+  items[idx].dataVendita = document.getElementById('sData').value || todayStr();
+  save(items);
+  closeSell();
+  showToast('Venduto! 🎉');
+}
+
+function openSettings(){ document.getElementById('setBackdrop').classList.add('open'); }
+function closeSettings(){ document.getElementById('setBackdrop').classList.remove('open'); }
+function wipeData(){
+  if(confirm('Cancellare tutti i dati salvati? Non si può annullare.')){
+    localStorage.removeItem(STORAGE_KEY);
+    render();
+    closeSettings();
+    showToast('Dati cancellati');
+  }
+}
+
+function genBookmarklet(){
+  let url = document.getElementById('deployUrl').value.trim();
+  if(!url){ showToast('Inserisci prima l\'indirizzo'); return; }
+  if(!url.endsWith('/')) url += '/';
+  // This runs ON the Vinted page when the bookmarklet is clicked.
+  // It grabs the most likely title/price/image nodes and forwards them via URL params.
+  const code = `(function(){
+    try{
+      var t = document.querySelector('h1') ? document.querySelector('h1').innerText.trim() : document.title;
+      var priceEl = document.querySelector('[class*=price]') || document.querySelector('[data-testid*=price]');
+      var p = priceEl ? priceEl.innerText.replace(/[^0-9,\\.]/g,'').replace(',','.') : '';
+      var img = document.querySelector('img');
+      var im = img ? img.src : '';
+      var u = '${url}?add=1&nome=' + encodeURIComponent(t) + '&prezzo=' + encodeURIComponent(p) + '&foto=' + encodeURIComponent(im);
+      window.open(u, '_blank');
+    }catch(e){ alert('Non sono riuscito a leggere questa pagina: ' + e.message); }
+  })();`;
+  const bookmarklet = 'javascript:' + encodeURIComponent(code);
+  const box = document.getElementById('bkResult');
+  box.style.display = 'block';
+  box.innerHTML = `Codice da incollare come URL del segnalibro:<br><br>${bookmarklet}
+    <br><br><a class="bk-link" href="${bookmarklet}">(su desktop: trascina questo link nella barra dei preferiti)</a>`;
+}
+
+// Handle incoming capture from bookmarklet
+(function checkIncoming(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('add')==='1'){
+    openAdd({
+      nome: params.get('nome') || '',
+      prezzo: params.get('prezzo') || '',
+      foto: params.get('foto') || '',
+    });
+    history.replaceState(null, '', window.location.pathname);
+  }
+})();
+
+function exportData(){
+  const items = load();
+  const blob = new Blob([JSON.stringify(items, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rigiro-backup-' + todayStr() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Backup scaricato');
+}
+
+function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const incoming = JSON.parse(e.target.result);
+      if(!Array.isArray(incoming)) throw new Error('formato non valido');
+      const items = load();
+      incoming.forEach(it=>{
+        if(!it.nome) return;
+        items.push({...it, id: uid()}); // new id avoids clashes with existing items
+      });
+      save(items);
+      closeSettings();
+      showToast(`Importati ${incoming.length} acquisti`);
+    }catch(err){
+      showToast('File non valido');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function genBulkBookmarklet(){
+  const code = `(function(){
+    try{
+      var links = document.querySelectorAll('a[href*="/items/"]');
+      var seen = {}; var results = [];
+      links.forEach(function(a){
+        var href = a.getAttribute('href');
+        if(seen[href]) return; seen[href]=true;
+        var box = a.closest('div') || a.parentElement;
+        var text = box ? box.innerText : a.innerText;
+        var m = text.match(/([0-9]+[.,][0-9]{2})\\\\s*€|€\\\\s*([0-9]+[.,][0-9]{2})/);
+        var price = m ? (m[1]||m[2]).replace(',','.') : '';
+        var name = (a.innerText || a.getAttribute('title') || '').trim().split('\\\\n')[0];
+        var img = box ? box.querySelector('img') : null;
+        if(name) results.push({nome:name, prezzo:price, foto: img?img.src:''});
+      });
+      navigator.clipboard.writeText(JSON.stringify(results)).then(function(){
+        alert('Copiati ' + results.length + ' articoli. Apri Rigiro e tocca Incolla acquisti.');
+      });
+    }catch(e){ alert('Non sono riuscito a leggere la pagina: ' + e.message); }
+  })();`;
+  const bookmarklet = 'javascript:' + encodeURIComponent(code);
+  const box = document.getElementById('bkBulkResult');
+  box.style.display = 'block';
+  box.innerHTML = `Codice da incollare come URL del segnalibro:<br><br>${bookmarklet}
+    <br><br><a class="bk-link" href="${bookmarklet}">(su desktop: trascina questo link nella barra dei preferiti)</a>`;
+}
+
+async function pasteOrders(){
+  try{
+    const text = await navigator.clipboard.readText();
+    const data = JSON.parse(text);
+    if(!Array.isArray(data) || data.length === 0){ showToast('Niente da incollare'); return; }
+    const items = load();
+    let added = 0;
+    data.forEach(d=>{
+      if(!d.nome) return;
+      items.push({
+        id: uid(),
+        nome: d.nome,
+        categoria: 'Altro',
+        lingua: 'IT',
+        quantita: 1,
+        prezzoAcquisto: parseFloat(d.prezzo) || 0,
+        dataAcquisto: todayStr(),
+        foto: d.foto || '',
+        note: '',
+        venduto:false, prezzoVendita:null, dataVendita:null,
+      });
+      added++;
+    });
+    save(items);
+    closeSettings();
+    showToast(`Aggiunti ${added} acquisti — controlla categoria e prezzi`);
+  }catch(e){
+    showToast('Nessun dato valido negli appunti');
+  }
+}
+
+function pasteManualLines(){
+  const raw = document.getElementById('manualPasteBox').value;
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(lines.length === 0){ showToast('Scrivi almeno una riga'); return; }
+  const items = load();
+  let added = 0;
+  lines.forEach(line=>{
+    const parts = line.split(',');
+    const nome = parts[0]?.trim();
+    const prezzo = parseFloat((parts[1]||'').replace(',','.').trim()) || 0;
+    if(!nome) return;
+    items.push({
+      id: uid(),
+      nome,
+      categoria: 'Altro',
+      lingua: 'IT',
+      quantita: 1,
+      prezzoAcquisto: prezzo,
+      dataAcquisto: todayStr(),
+      foto: '',
+      note: '',
+      venduto:false, prezzoVendita:null, dataVendita:null,
+    });
+    added++;
+  });
+  save(items);
+  document.getElementById('manualPasteBox').value = '';
+  closeSettings();
+  showToast(`Aggiunti ${added} acquisti — controlla categoria e prezzi`);
+}
+
+render();
+</script>
+</body>
+</html>

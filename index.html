@@ -274,6 +274,11 @@
       🎮 È un lotto con più giochi diversi?
     </button>
     <div id="lottoFields" style="display:none;">
+      <div class="field">
+        <label>Nome del lotto</label>
+        <input id="fLottoNome" placeholder="es. Lotto Vinted PS2">
+        <p style="font-size:11px;color:var(--ink-dim);margin:5px 0 0;">Gli articoli verranno raggruppati insieme in automatico sotto questo nome.</p>
+      </div>
       <div class="filters" style="margin-bottom:12px;">
         <button type="button" class="active" data-sub="diviso" onclick="setLottoSubMode('diviso')">Dividi in automatico</button>
         <button type="button" data-sub="manuale" onclick="setLottoSubMode('manuale')">Prezzo singolo</button>
@@ -301,6 +306,7 @@
         <option value="PS3">PS3</option>
         <option value="3DS">3DS</option>
         <option value="DS">DS</option>
+        <option value="PSP">PSP</option>
         <option value="Wii U">Wii U</option>
         <option value="Wii">Wii</option>
         <option value="GameCube">GameCube</option>
@@ -429,6 +435,21 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Custom confirm/prompt modal (native confirm()/prompt() are unreliable in iOS home-screen apps) -->
+<div class="sheet-backdrop" id="customModalBackdrop">
+  <div class="sheet">
+    <h2 id="customModalTitle">Conferma</h2>
+    <p id="customModalMsg" style="font-size:14px;color:var(--ink-dim);margin-top:-6px;"></p>
+    <div class="field" id="customModalInputField" style="display:none;">
+      <input id="customModalInput">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-ghost" onclick="closeCustomModal()">Annulla</button>
+      <button class="btn-primary" id="customModalConfirmBtn">Conferma</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const STORAGE_KEY = 'rigiro_items_v1';
 let currentFilter = 'all';
@@ -452,16 +473,17 @@ function toggleSelect(id){
   render();
 }
 function promptGroupLotto(){
-  const nome = prompt('Nome per questo lotto (es. "Lotto Vinted 12/09"):');
-  if(!nome || !nome.trim()) return;
-  const items = load();
-  const count = selectedIds.size;
-  items.forEach(i=>{
-    if(selectedIds.has(i.id)) i.lottoNome = nome.trim();
+  showPrompt('Nome per questo lotto', '', (nome)=>{
+    if(!nome || !nome.trim()) return;
+    const items = load();
+    const count = selectedIds.size;
+    items.forEach(i=>{
+      if(selectedIds.has(i.id)) i.lottoNome = nome.trim();
+    });
+    save(items);
+    toggleSelectMode();
+    showToast(`${count} articoli raggruppati`);
   });
-  save(items);
-  toggleSelectMode();
-  showToast(`${count} articoli raggruppati`);
 }
 
 const CAT_COLORS = {
@@ -473,6 +495,7 @@ const CAT_COLORS = {
   'PS3': '#0070D1',
   '3DS': '#F2A900',
   'DS': '#5C7AEA',
+  'PSP': '#4A4A8A',
   'Wii U': '#00BCEB',
   'Wii': '#4FC3F7',
   'GameCube': '#8A5CF6',
@@ -492,6 +515,37 @@ function showToast(msg){
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 1600);
 }
+
+let customModalCallback = null;
+function showConfirm(message, onConfirm){
+  document.getElementById('customModalTitle').textContent = 'Conferma';
+  document.getElementById('customModalMsg').textContent = message;
+  document.getElementById('customModalMsg').style.display = 'block';
+  document.getElementById('customModalInputField').style.display = 'none';
+  document.getElementById('customModalConfirmBtn').textContent = 'Conferma';
+  customModalCallback = onConfirm;
+  document.getElementById('customModalBackdrop').classList.add('open');
+}
+function showPrompt(title, defaultValue, onSubmit){
+  document.getElementById('customModalTitle').textContent = title;
+  document.getElementById('customModalMsg').style.display = 'none';
+  document.getElementById('customModalInputField').style.display = 'block';
+  document.getElementById('customModalInput').value = defaultValue || '';
+  document.getElementById('customModalConfirmBtn').textContent = 'OK';
+  customModalCallback = () => onSubmit(document.getElementById('customModalInput').value);
+  document.getElementById('customModalBackdrop').classList.add('open');
+  setTimeout(()=>document.getElementById('customModalInput').focus(), 150);
+}
+function closeCustomModal(){
+  document.getElementById('customModalBackdrop').classList.remove('open');
+  customModalCallback = null;
+}
+document.getElementById('customModalConfirmBtn').addEventListener('click', ()=>{
+  const cb = customModalCallback;
+  document.getElementById('customModalBackdrop').classList.remove('open');
+  customModalCallback = null;
+  if(cb) cb();
+});
 
 function render(){
   const items = load();
@@ -598,14 +652,15 @@ function renderGroupCard(lottoNome, groupItems){
 }
 
 function renameLotto(oldName){
-  const newName = prompt('Nuovo nome per il lotto:', oldName);
-  if(!newName || !newName.trim() || newName.trim() === oldName) return;
-  const trimmed = newName.trim();
-  const items = load();
-  items.forEach(i=>{ if(i.lottoNome === oldName) i.lottoNome = trimmed; });
-  save(items);
-  if(expandedLots.has(oldName)){ expandedLots.delete(oldName); expandedLots.add(trimmed); }
-  showToast('Lotto rinominato');
+  showPrompt('Nuovo nome per il lotto', oldName, (newName)=>{
+    if(!newName || !newName.trim() || newName.trim() === oldName) return;
+    const trimmed = newName.trim();
+    const items = load();
+    items.forEach(i=>{ if(i.lottoNome === oldName) i.lottoNome = trimmed; });
+    save(items);
+    if(expandedLots.has(oldName)){ expandedLots.delete(oldName); expandedLots.add(trimmed); }
+    showToast('Lotto rinominato');
+  });
 }
 
 function toggleLotGroup(lottoNome){
@@ -695,6 +750,7 @@ function openAdd(prefill){
   document.getElementById('lottoToggleBtn').textContent = '🎮 È un lotto con più giochi diversi?';
   document.getElementById('lottoToggleBtn').style.display = 'block';
   document.getElementById('fLottoNomi').value = '';
+  document.getElementById('fLottoNome').value = '';
   document.getElementById('fLottoPrezzoTotale').value = '';
   resetFotoField();
   if(prefill?.foto){
@@ -744,11 +800,12 @@ function editItem(id){
 function deleteItem(){
   const id = document.getElementById('editId').value;
   if(!id) return;
-  if(!confirm('Eliminare questo articolo? Non si può annullare.')) return;
-  const items = load().filter(i=>i.id !== id);
-  save(items);
-  closeAdd();
-  showToast('Articolo eliminato');
+  showConfirm('Eliminare questo articolo? Non si può annullare.', ()=>{
+    const items = load().filter(i=>i.id !== id);
+    save(items);
+    closeAdd();
+    showToast('Articolo eliminato');
+  });
 }
 function closeAdd(){ document.getElementById('addBackdrop').classList.remove('open'); }
 
@@ -757,12 +814,15 @@ function saveItem(){
 
   if(lottoMode && !editId){
     const items = load();
+    const lottoNomeInput = document.getElementById('fLottoNome').value.trim();
+    const lottoNome = lottoNomeInput || `Lotto ${todayStr()}`;
     const shared = {
       categoria: document.getElementById('fCategoria').value,
       lingua: document.getElementById('fLingua').value,
       dataAcquisto: document.getElementById('fData').value || todayStr(),
       foto: document.getElementById('fFoto').value.trim(),
       note: document.getElementById('fNote').value.trim(),
+      lottoNome,
     };
 
     if(lottoSubMode === 'manuale'){
@@ -780,6 +840,7 @@ function saveItem(){
         items.push({ id: uid(), nome: p.nome, quantita: 1, prezzoAcquisto: p.prezzo, venduto:false, prezzoVendita:null, dataVendita:null, ...shared });
       });
       save(items);
+      expandedLots.add(lottoNome);
       closeAdd();
       showToast(`Aggiunti ${parsed.length} giochi dal lotto`);
       return;
@@ -796,6 +857,7 @@ function saveItem(){
       items.push({ id: uid(), nome, quantita: 1, prezzoAcquisto, venduto:false, prezzoVendita:null, dataVendita:null, ...shared });
     });
     save(items);
+    expandedLots.add(lottoNome);
     closeAdd();
     showToast(`Aggiunti ${nomi.length} giochi dal lotto`);
     return;
@@ -855,12 +917,12 @@ function confirmSell(){
 function openSettings(){ document.getElementById('setBackdrop').classList.add('open'); }
 function closeSettings(){ document.getElementById('setBackdrop').classList.remove('open'); }
 function wipeData(){
-  if(confirm('Cancellare tutti i dati salvati? Non si può annullare.')){
+  showConfirm('Cancellare tutti i dati salvati? Non si può annullare.', ()=>{
     localStorage.removeItem(STORAGE_KEY);
     render();
     closeSettings();
     showToast('Dati cancellati');
-  }
+  });
 }
 
 function genBookmarklet(){

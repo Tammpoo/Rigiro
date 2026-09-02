@@ -242,7 +242,8 @@
   </div>
   <select id="sortSelect" onchange="render()"
     style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-raised);color:var(--ink);font-size:13.5px;font-family:'Inter',sans-serif;margin-bottom:12px;">
-    <option value="inserimento">Ordine di inserimento (più vecchi prima)</option>
+    <option value="inserimento_desc">Ultimi inseriti prima</option>
+    <option value="inserimento_asc">Primi inseriti prima</option>
     <option value="data_desc">Più recenti</option>
     <option value="data_asc">Più vecchi</option>
     <option value="prezzo_desc">Prezzo pagato: alto → basso</option>
@@ -561,10 +562,12 @@ function render(){
     (i.lingua||'').toLowerCase().includes(q) ||
     (i.lottoNome||'').toLowerCase().includes(q)
   );
-  const sortBy = document.getElementById('sortSelect')?.value || 'inserimento';
+  const sortBy = document.getElementById('sortSelect')?.value || 'inserimento_desc';
   const marginOf = i => i.venduto ? (i.prezzoVendita - i.prezzoAcquisto) : -Infinity;
+  const insertedAt = i => { const m = i.id && String(i.id).match(/^i(\d{13})/); return m ? parseInt(m[1]) : 0; };
   const sorters = {
-    inserimento: ()=> 0, // preserves the order items were added in (oldest first)
+    inserimento_desc: (a,b)=> insertedAt(b) - insertedAt(a), // ultimo aggiunto per primo
+    inserimento_asc: (a,b)=> insertedAt(a) - insertedAt(b), // primo aggiunto per primo
     data_desc: (a,b)=> (b.dataAcquisto||'').localeCompare(a.dataAcquisto||''),
     data_asc: (a,b)=> (a.dataAcquisto||'').localeCompare(b.dataAcquisto||''),
     prezzo_desc: (a,b)=> b.prezzoAcquisto - a.prezzoAcquisto,
@@ -574,7 +577,7 @@ function render(){
     nome_asc: (a,b)=> (a.nome||'').localeCompare(b.nome||''),
     nome_desc: (a,b)=> (b.nome||'').localeCompare(a.nome||''),
   };
-  filtered = [...filtered].sort(sorters[sortBy] || sorters.inserimento);
+  filtered = [...filtered].sort(sorters[sortBy] || sorters.inserimento_desc);
 
   if(filtered.length===0){
     list.innerHTML = `<div class="empty"><span class="em">🧺</span>Ancora niente qui.<br>Aggiungi il tuo primo acquisto.</div>`;

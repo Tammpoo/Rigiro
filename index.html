@@ -648,12 +648,25 @@ function renderGroupCard(lottoNome, groupItems){
         <div class="lname" style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📦 ${escapeHtml(lottoNome)}</div>
         <button onclick="event.stopPropagation(); renameLotto('${safeName}')" aria-label="Rinomina lotto"
           style="background:none;border:none;color:var(--ink-dim);font-size:15px;padding:2px 4px;flex-shrink:0;">✎</button>
+        <button onclick="event.stopPropagation(); deleteLotto('${safeName}')" aria-label="Elimina lotto"
+          style="background:none;border:none;color:var(--loss);font-size:15px;padding:2px 4px;flex-shrink:0;">🗑</button>
         <span style="color:var(--ink-dim); font-size:13px; flex-shrink:0;">${expanded ? '▾' : '▸'}</span>
       </div>
       <div class="lmeta">${groupItems.length} articoli · ${euro(totale)} pagato${venduti>0 ? ` · ${venduti} venduti` : ''}</div>
     </div>
     ${rows}
   </div>`;
+}
+
+function deleteLotto(lottoNome){
+  const items = load();
+  const count = items.filter(i=>i.lottoNome === lottoNome).length;
+  showConfirm(`Eliminare tutto il lotto "${lottoNome}"? Verranno cancellati ${count} articoli, non si può annullare.`, ()=>{
+    const rimasti = items.filter(i=>i.lottoNome !== lottoNome);
+    save(rimasti);
+    expandedLots.delete(lottoNome);
+    showToast(`Lotto eliminato (${count} articoli)`);
+  });
 }
 
 function renameLotto(oldName){

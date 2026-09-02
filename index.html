@@ -513,7 +513,7 @@ const CAT_COLORS = {
 
 function load(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }catch(e){ return []; } }
 function save(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); render(); }
-function uid(){ return 'i' + Date.now() + Math.random().toString(36).slice(2,7); }
+function uid(offset){ return 'i' + (Date.now() + (offset||0)) + Math.random().toString(36).slice(2,7); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function euro(n){ return '€' + (Math.round(n*100)/100).toFixed(2).replace('.00','').replace(/\.(\d)0$/,'.$1'); }
 function showToast(msg){
@@ -866,8 +866,8 @@ function saveItem(){
         return { nome, prezzo };
       }).filter(Boolean);
       if(parsed.length === 0){ showToast('Formato non valido: nome, prezzo su ogni riga'); return; }
-      parsed.forEach(p=>{
-        items.push({ id: uid(), nome: p.nome, quantita: 1, prezzoAcquisto: p.prezzo, venduto:false, prezzoVendita:null, dataVendita:null, ...shared });
+      parsed.forEach((p, idx)=>{
+        items.push({ id: uid(idx), nome: p.nome, quantita: 1, prezzoAcquisto: p.prezzo, venduto:false, prezzoVendita:null, dataVendita:null, ...shared });
       });
       save(items);
       expandedLots.add(lottoId);
@@ -884,7 +884,7 @@ function saveItem(){
     const assigned = perPrice * (nomi.length - 1);
     nomi.forEach((nome, idx)=>{
       const prezzoAcquisto = idx === nomi.length - 1 ? Math.round((totale - assigned) * 100) / 100 : perPrice;
-      items.push({ id: uid(), nome, quantita: 1, prezzoAcquisto, venduto:false, prezzoVendita:null, dataVendita:null, ...shared });
+      items.push({ id: uid(idx), nome, quantita: 1, prezzoAcquisto, venduto:false, prezzoVendita:null, dataVendita:null, ...shared });
     });
     save(items);
     expandedLots.add(lottoId);
@@ -1015,9 +1015,16 @@ function importData(event){
       const incoming = JSON.parse(e.target.result);
       if(!Array.isArray(incoming)) throw new Error('formato non valido');
       const items = load();
-      incoming.forEach(it=>{
+      const existingIds = new Set(items.map(x=>x.id));
+      incoming.forEach((it, idx)=>{
         if(!it.nome) return;
-        items.push({...it, id: uid()}); // new id avoids clashes with existing items
+        // Keep the original id (and its timestamp) when possible, so the item's
+        // real add-time from the source device is preserved. Only assign a new
+        // one if it's missing or clashes with something already on this device.
+        const keepId = it.id && !existingIds.has(it.id);
+        const finalId = keepId ? it.id : uid(idx);
+        existingIds.add(finalId);
+        items.push({...it, id: finalId});
       });
       save(items);
       closeSettings();
@@ -1065,10 +1072,10 @@ async function pasteOrders(){
     if(!Array.isArray(data) || data.length === 0){ showToast('Niente da incollare'); return; }
     const items = load();
     let added = 0;
-    data.forEach(d=>{
+    data.forEach((d, idx)=>{
       if(!d.nome) return;
       items.push({
-        id: uid(),
+        id: uid(idx),
         nome: d.nome,
         categoria: 'Altro',
         lingua: 'IT',
@@ -1095,13 +1102,13 @@ function pasteManualLines(){
   if(lines.length === 0){ showToast('Scrivi almeno una riga'); return; }
   const items = load();
   let added = 0;
-  lines.forEach(line=>{
+  lines.forEach((line, idx)=>{
     const parts = line.split(',');
     const nome = parts[0]?.trim();
     const prezzo = parseFloat((parts[1]||'').replace(',','.').trim()) || 0;
     if(!nome) return;
     items.push({
-      id: uid(),
+      id: uid(idx),
       nome,
       categoria: 'Altro',
       lingua: 'IT',

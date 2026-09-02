@@ -612,7 +612,7 @@ function render(){
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 
 function renderItemRow(i, insideGroup){
-  const img = i.foto ? `<img src="${i.foto}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'📦'}))">` : `<div class="ph">📦</div>`;
+  const img = insideGroup ? '' : (i.foto ? `<img src="${i.foto}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'📦'}))">` : `<div class="ph">📦</div>`);
   const badge = i.venduto ? `<span class="badge sold">Venduto</span>` : `<span class="badge pending">In inventario</span>`;
   const priceLine = i.venduto
     ? `<span class="p" style="color:var(--profit)">${euro(i.prezzoVendita - i.prezzoAcquisto)}</span>`
@@ -645,10 +645,15 @@ function renderGroupCard(key, lottoNome, groupItems){
   const expanded = expandedLots.has(key);
   const rows = expanded ? groupItems.map(i=>renderItemRow(i, true)).join('') : '';
   const safeKey = escapeHtml(key).replace(/'/g,"\\'");
+  const groupFoto = groupItems.find(i=>i.foto)?.foto || '';
+  const thumb = groupFoto
+    ? `<img src="${groupFoto}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'📦'}))" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0;">`
+    : `<div class="ph" style="width:32px;height:32px;font-size:14px;flex-shrink:0;">📦</div>`;
   return `<div class="card-group">
     <div class="card-group-header" style="${expanded ? '' : 'border-bottom:none;'}" onclick="toggleLotGroup('${safeKey}')">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <div class="lname" style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📦 ${escapeHtml(lottoNome)}</div>
+        ${thumb}
+        <div class="lname" style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(lottoNome)}</div>
         <button onclick="event.stopPropagation(); renameLotto('${safeKey}')" aria-label="Rinomina lotto"
           style="background:none;border:none;color:var(--ink-dim);font-size:15px;padding:2px 4px;flex-shrink:0;">✎</button>
         <button onclick="event.stopPropagation(); deleteLotto('${safeKey}')" aria-label="Elimina lotto"

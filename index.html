@@ -1077,13 +1077,13 @@ async function pasteOrders(){
       items.push({
         id: uid(idx),
         nome: d.nome,
-        categoria: 'Altro',
-        lingua: 'IT',
-        quantita: 1,
+        categoria: CAT_COLORS[d.categoria] ? d.categoria : 'Altro',
+        lingua: d.lingua || 'IT',
+        quantita: Math.max(1, parseInt(d.quantita) || 1),
         prezzoAcquisto: parseFloat(d.prezzo) || 0,
-        dataAcquisto: todayStr(),
+        dataAcquisto: d.dataAcquisto || todayStr(),
         foto: d.foto || '',
-        note: '',
+        note: d.note || '',
         venduto:false, prezzoVendita:null, dataVendita:null,
       });
       added++;
